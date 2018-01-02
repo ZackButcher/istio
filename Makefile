@@ -89,17 +89,17 @@ depend: depend.ensure
 ${GOPATH}/bin/dep:
 	go get -u github.com/golang/dep/cmd/dep
 
-Gopkg.lock: Gopkg.toml ${GOPATH}/bin/dep; $(info $(H) generating) @
+# @todo only run if there are changes (e.g., create a checksum file?) 
+# Update the vendor dir, pulling latest compatible dependencies from the
+# defined branches.
+depend.ensure: Gopkg.toml ${GOPATH}/bin/dep ; $(info $(H) ensuring dependencies are up to date and generating lock file...)
+	$(Q) dep ensure
+
+Gopkg.lock: depend.ensure ; $(info $(H) updating lock file...) @
 	$(Q) dep ensure -update
 
 depend.status: Gopkg.lock ; $(info $(H) reporting dependencies status...)
 	$(Q) dep status
-
-# @todo only run if there are changes (e.g., create a checksum file?) 
-# Update the vendor dir, pulling latest compatible dependencies from the
-# defined branches.
-depend.ensure: Gopkg.lock ${GOPATH}/bin/dep; $(info $(H) ensuring dependencies are up to date...)
-	$(Q) dep ensure
 
 depend.graph: Gopkg.lock ; $(info $(H) visualizing dependency graph...)
 	$(Q) dep status -dot | dot -T png | display
@@ -108,9 +108,7 @@ depend.graph: Gopkg.lock ; $(info $(H) visualizing dependency graph...)
 depend.vendor: vendor
 	$(Q) dep ensure -vendor-only
 
-vendor: Gopkg.toml ${GOPATH}/bin/dep
-	dep ensure -update
-
+vendor: Gopkg.lock ${GOPATH}/bin/dep
 
 #-----------------------------------------------------------------------------
 # Target: precommit
