@@ -89,7 +89,7 @@ depend: depend.ensure
 ${GOPATH}/bin/dep:
 	go get -u github.com/golang/dep/cmd/dep
 
-Gopkg.lock: Gopkg.toml ; $(info $(H) generating) @
+Gopkg.lock: Gopkg.toml ${GOPATH}/bin/dep; $(info $(H) generating) @
 	$(Q) dep ensure -update
 
 depend.status: Gopkg.lock ; $(info $(H) reporting dependencies status...)
@@ -108,7 +108,7 @@ depend.graph: Gopkg.lock ; $(info $(H) visualizing dependency graph...)
 depend.vendor: vendor
 	$(Q) dep ensure -vendor-only
 
-vendor:
+vendor: Gopkg.toml ${GOPATH}/bin/dep
 	dep ensure -update
 
 
