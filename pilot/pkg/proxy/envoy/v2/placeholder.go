@@ -21,35 +21,28 @@ package v2
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"time"
 
-	"github.com/envoyproxy/go-control-plane/api"
-	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	xds "github.com/envoyproxy/go-control-plane/pkg/server"
-	"google.golang.org/grpc"
-
-	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/cache"
 )
 
 // RunADS starts an ADS server at the given port.
 func RunXDS(ctx context.Context, config cache.Cache, port uint) {
-	server := xds.NewServer(config)
-	grpcServer := grpc.NewServer()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Errorf("failed to listen")
-	}
-	api.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-	log.Infof("xDS server listening on %d", port)
-	go func() {
-		if err = grpcServer.Serve(lis); err != nil {
-			log.Errorf("Failed to start gRPC server")
-		}
-	}()
-	<-ctx.Done()
-	grpcServer.GracefulStop()
+	//server := xds.NewServer(config)
+	//grpcServer := grpc.NewServer()
+	//lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	//if err != nil {
+	//	log.Errorf("failed to listen")
+	//}
+	//api.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
+	//log.Infof("xDS server listening on %d", port)
+	//go func() {
+	//	if err = grpcServer.Serve(lis); err != nil {
+	//		log.Errorf("Failed to start gRPC server")
+	//	}
+	//}()
+	//<-ctx.Done()
+	//grpcServer.GracefulStop()
 }
 
 // DataPlaneConfigRefresh periodically refreshes configuration of each node
