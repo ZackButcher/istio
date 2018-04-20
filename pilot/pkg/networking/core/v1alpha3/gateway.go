@@ -25,10 +25,13 @@ import (
 	http_conn "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	networking "istio.io/api/networking/v1alpha3"
 	"istio.io/istio/pilot/pkg/model"
 	istio_route "istio.io/istio/pilot/pkg/networking/core/v1alpha3/route"
 	"istio.io/istio/pilot/pkg/networking/plugin"
+	"istio.io/istio/pilot/pkg/networking/util"
 	"istio.io/istio/pkg/log"
 )
 
@@ -53,20 +56,27 @@ func (configgen *ConfigGeneratorImpl) buildGatewayListeners(env model.Environmen
 		log.Errora("Failed to get gateway instances for router ", node.ID, err)
 		return nil, err
 	}
+	log.Infof("got %d instances for node %v", len(workloadInstances), node)
 
 	var workloadLabels model.LabelsCollection
 	for _, w := range workloadInstances {
 		workloadLabels = append(workloadLabels, w.Labels)
 	}
+	log.Infof("computed label set: %v", workloadLabels)
 
 	gateways := env.Gateways(workloadLabels)
 	if len(gateways) == 0 {
-		log.Debuga("no gateways for router", node.ID)
+		log.Infof("no gateways for router: %v with labels: %v", node.ID, workloadLabels)
 		return []*xdsapi.Listener{}, nil
 	}
 
 	merged := model.MergeGateways(gateways...)
-	log.Debugf("buildGatewayListeners: gateways after merging: %v", merged)
+	log.Infof("buildGatewayListeners: gateways after merging: %v", merged)
+
+	pprint := func(p proto.Message) string {
+		s, _ := (&jsonpb.Marshaler{}).MarshalToString(p)
+		return s
+	}
 
 	listeners := make([]*xdsapi.Listener, 0, len(merged.Servers))
 	for portNumber, servers := range merged.Servers {
@@ -118,11 +128,12 @@ func (configgen *ConfigGeneratorImpl) buildGatewayListeners(env model.Environmen
 		if err := marshalFilters(mutable.Listener, opts, mutable.FilterChains); err != nil {
 			log.Warn(err.Error())
 		}
-		if log.DebugEnabled() {
+		if log.InfoEnabled() {
 			// pprint does JSON marshalling, so we skip it if debugging is not enabled
-			log.Debugf("buildGatewayListeners: constructed listener with %d filter chains:\n%v",
+			log.Infof("buildGatewayListeners: constructed listener with %d filter chains:\n%v",
 				len(mutable.Listener.FilterChains), mutable.Listener)
 		}
+		log.Infof("gateway %v build listener %s", merged.Names, pprint(mutable.Listener))
 		listeners = append(listeners, mutable.Listener)
 	}
 	return listeners, nil
@@ -150,7 +161,7 @@ func createGatewayHTTPFilterChainOpts(
 	for i, server := range servers {
 		routeCfg := buildGatewayInboundHTTPRouteConfig(env, nameF, gatewayNames, server)
 		if routeCfg == nil {
-			log.Debugf("omitting HTTP listeners for port %d filter chain %d due to no routes", server.Port, i)
+			log.Infof("omitting HTTP listeners for port %d filter chain %d due to no routes", server.Port, i)
 			continue
 		}
 		// if https redirect is set, we need to enable requireTls field in all the virtual hosts
@@ -225,7 +236,7 @@ func buildGatewayInboundHTTPRouteConfig(
 		// to construct downstreams; I think we need to look up the service itself, and use the service's port.
 		routes, err := istio_route.TranslateRoutes(v, nameF(port), port, nil, gatewayNames)
 		if err != nil {
-			log.Debugf("omitting routes for service %v due to error: %v", v, err)
+			log.Infof("omitting routes for service %v due to error: %v", v, err)
 			continue
 		}
 		domains := v.Spec.(*networking.VirtualService).Hosts
@@ -238,10 +249,10 @@ func buildGatewayInboundHTTPRouteConfig(
 	}
 
 	if len(virtualHosts) == 0 {
-		log.Debugf("constructed http route config for port %d with no vhosts; omitting", port)
+		log.Infof("constructed http route config for port %d with no vhosts; omitting", port)
 		return nil
 	}
-
+	util.SortVirtualHosts(virtualHosts)
 	return &xdsapi.RouteConfiguration{
 		Name:         fmt.Sprintf("%d", port),
 		VirtualHosts: virtualHosts,
@@ -282,7 +293,7 @@ func buildGatewayNetworkFilters(env model.Environment, server *networking.Server
 	for host, dest := range byHost {
 		upstream, err := env.GetService(host)
 		if err != nil || upstream == nil {
-			log.Debugf("failed to retrieve service for destination %q: %v", host, err)
+			log.Infof("failed to retrieve service for destination %q: %v", host, err)
 			continue
 		}
 		filters = append(filters, buildOutboundNetworkFilters(destToClusterName(dest), []string{upstream.Address}, port)...)

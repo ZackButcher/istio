@@ -138,6 +138,7 @@ func (configgen *ConfigGeneratorImpl) BuildSidecarOutboundHTTPRouteConfig(env mo
 		virtualHosts = vHostPortMap[port]
 	}
 
+	util.SortVirtualHosts(virtualHosts)
 	out := &xdsapi.RouteConfiguration{
 		Name:             fmt.Sprintf("%d", port),
 		VirtualHosts:     virtualHosts,

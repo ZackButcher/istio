@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -184,6 +186,11 @@ func (c *controller) List(typ, namespace string) ([]model.Config, error) {
 		return nil, errUnsupportedOp
 	}
 
+	pprint := func(p proto.Message) string {
+		s, _ := (&jsonpb.Marshaler{}).MarshalToString(p)
+		return s
+	}
+
 	out := make([]model.Config, 0)
 	for _, obj := range c.informer.GetStore().List() {
 		ingress := obj.(*v1beta1.Ingress)
@@ -198,9 +205,11 @@ func (c *controller) List(typ, namespace string) ([]model.Config, error) {
 		switch typ {
 		case model.VirtualService.Type:
 			_, virtualServices := ConvertIngressV1alpha3(*ingress, namespace)
+			log.Infof("computed VirtualService from ingress %q got %v", ingress.Name, pprint(virtualServices.Spec))
 			out = append(out, virtualServices)
 		case model.Gateway.Type:
 			gateways, _ := ConvertIngressV1alpha3(*ingress, namespace)
+			log.Infof("computed Gateway from ingress %q got %v", ingress.Name, pprint(gateways.Spec))
 			out = append(out, gateways)
 		case model.IngressRule.Type:
 			rules := convertIngress(*ingress, c.domainSuffix)
