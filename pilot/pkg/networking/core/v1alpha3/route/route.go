@@ -23,6 +23,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	"github.com/gogo/protobuf/types"
+	multierror "github.com/hashicorp/go-multierror"
 
 	networking "istio.io/api/networking/v1alpha3"
 	"istio.io/istio/pilot/pkg/model"
@@ -206,11 +207,13 @@ func TranslateRoutes(
 
 	operation := in.ConfigMeta.Name
 
+	errs := &multierror.Error{}
 	out := make([]route.Route, 0, len(rule.Http))
 	for _, http := range rule.Http {
 		if len(http.Match) == 0 {
 			if r, err := translateRoute(http, nil, port, operation, nameF, proxyLabels, gatewayNames); err != nil {
-				return nil, err
+				errs = multierror.Append(errs, err)
+				continue
 			} else if r != nil {
 				// this cannot be nil
 				out = append(out, *r)
@@ -220,7 +223,8 @@ func TranslateRoutes(
 			// TODO: https://github.com/istio/istio/issues/4239
 			for _, match := range http.Match {
 				if r, err := translateRoute(http, match, port, operation, nameF, proxyLabels, gatewayNames); err != nil {
-					return nil, err
+					errs = multierror.Append(errs, err)
+					continue
 				} else if r != nil {
 					out = append(out, *r)
 				}
@@ -228,6 +232,13 @@ func TranslateRoutes(
 		}
 	}
 
+	err := errs.ErrorOrNil()
+	if len(out) == 0 {
+		return out, err
+	} else if err != nil {
+		// We have some routes, but also some errors. Log the errors and hand back the routes.
+		log.Info(err.Error())
+	}
 	return out, nil
 }
 
