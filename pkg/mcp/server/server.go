@@ -189,6 +189,7 @@ func (w *watch) schedulePush() {
 
 	// close the watch
 	if w.closed {
+		scope.Debugf("watch: schedulePush: push scheduled for closed watch")
 		// unlock before channel write
 		w.mu.Unlock()
 
@@ -202,12 +203,14 @@ func (w *watch) schedulePush() {
 
 	// no-op if the response has already be sent
 	if w.newPushResponse == nil {
+		scope.Debug("watch: schedulePush: response was already sent, skipping")
 		w.mu.Unlock()
 		return
 	}
 
 	// delay re-sending a previously nack'd response
 	if w.newPushResponse.Version == w.mostRecentNackedVersion {
+		scope.Debug("watch: schedulePush: resending previously NACK'd response")
 		if w.timer == nil {
 			w.timer = time.AfterFunc(nackLimitFreq, w.delayedPush)
 		}
@@ -224,6 +227,7 @@ func (w *watch) schedulePush() {
 	}
 	// unlock before channel write
 	w.mu.Unlock()
+	scope.Debug("watch: schedulePush: sending response")
 	select {
 	case w.newPushResponseReadyChan <- newPushResponseStateReady:
 	default:
@@ -383,6 +387,7 @@ func (s *Server) StreamAggregatedResources(stream mcp.AggregatedMeshConfigServic
 	for {
 		select {
 		case w, more := <-responseChan:
+			scope.Debugf("got response")
 			if !more || w == nil {
 				return status.Error(codes.Unavailable, "server canceled watch")
 			}

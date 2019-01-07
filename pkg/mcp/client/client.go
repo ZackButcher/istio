@@ -61,6 +61,13 @@ type Updater interface {
 	Apply(*Change) error
 }
 
+// UpdaterFunc implements Updater for anonymous functions
+type UpdaterFunc func(*Change) error
+
+func (f UpdaterFunc) Apply(c *Change) error {
+	return f(c)
+}
+
 type perTypeState struct {
 	sync.Mutex
 	lastVersion string
