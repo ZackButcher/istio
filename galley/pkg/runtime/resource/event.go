@@ -37,6 +37,10 @@ const (
 	// FullSync indicates that the initial state of the store has been published as a series of Added events.
 	// Events after FullSync are actual change events that the source-store has encountered.
 	FullSync
+
+	// DeletedTypeURL indicates that existing resources for the TypeURL have been deleted
+	// Typically this will be followed by resource additions and FullSync
+	DeletedTypeURL
 )
 
 // Event represents a change that occurred against a resource in the source config system.
@@ -60,6 +64,8 @@ func (k EventKind) String() string {
 		return "Deleted"
 	case FullSync:
 		return "FullSync"
+	case DeletedTypeURL:
+		return "DeletedTypeURL"
 	default:
 		return fmt.Sprintf("<<Unknown EventKind %d>>", k)
 	}
@@ -70,6 +76,8 @@ func (e Event) String() string {
 	switch e.Kind {
 	case Added, Updated, Deleted:
 		return fmt.Sprintf("[Event](%s: %v)", e.Kind.String(), e.Entry.ID)
+	case DeletedTypeURL:
+		return fmt.Sprintf("[Event](%s: %s)", e.Kind.String(), e.Entry.ID.Key.TypeURL.String())
 	case FullSync:
 		return fmt.Sprintf("[Event](%s)", e.Kind.String())
 	default:

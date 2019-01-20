@@ -119,6 +119,7 @@ func (c *Cache) Watch(request *mcp.MeshConfigRequest, pushResponse server.PushRe
 	// return an immediate response if a snapshot is available and the
 	// requested version doesn't match.
 	if snapshot, ok := c.snapshots[group]; ok {
+		scope.Infof("snapshot for %s is %+v", request.TypeUrl, snapshot.Resources(request.TypeUrl))
 		version := snapshot.Version(request.TypeUrl)
 		scope.Debugf("Found snapshot for group: %q for %v @ version: %q",
 			group, request.TypeUrl, version)

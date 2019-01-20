@@ -1,0 +1,15 @@
+dependencies:
+- name: sidecarInjectorWebhook
+  repository: file://../subcharts/sidecarInjectorWebhook
+  version: 1.1.0
+- name: security
+  repository: file://../subcharts/security
+  version: 1.1.0
+- name: gateways
+  repository: file://../subcharts/gateways
+  version: 1.1.0
+- name: istio-cni
+  repository: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
+  version: 0.1.0
+digest: sha256:10023feaf6ae3d0055db5257fbebf8db1b38f7b9b5bfd84a9a98ba03d793b7f9
+generated: 2019-01-14T22:13:56.76378243+05:30

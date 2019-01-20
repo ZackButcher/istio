@@ -21,12 +21,13 @@ import (
 
 func TestEventKind_String(t *testing.T) {
 	tests := map[EventKind]string{
-		None:     "None",
-		Added:    "Added",
-		Updated:  "Updated",
-		Deleted:  "Deleted",
-		FullSync: "FullSync",
-		55:       "<<Unknown EventKind 55>>",
+		None:           "None",
+		Added:          "Added",
+		Updated:        "Updated",
+		Deleted:        "Deleted",
+		FullSync:       "FullSync",
+		DeletedTypeURL: "DeletedTypeURL",
+		55:             "<<Unknown EventKind 55>>",
 	}
 
 	for i, e := range tests {
@@ -59,6 +60,10 @@ func TestEvent_String(t *testing.T) {
 		{
 			i:   Event{Kind: Deleted, Entry: Entry{ID: VersionedKey{Version: "foo", Key: Key{FullName: FullName{"fn"}}}}},
 			exp: "[Event](Deleted: [VKey](:fn @foo))",
+		},
+		{
+			i:   Event{Kind: DeletedTypeURL, Entry: Entry{ID: VersionedKey{Version: "foo", Key: Key{TypeURL: TypeURL{"turl"}}}}},
+			exp: "[Event](DeletedTypeURL: turl)",
 		},
 		{
 			i:   Event{Kind: FullSync},

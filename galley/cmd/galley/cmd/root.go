@@ -164,6 +164,13 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&validationArgs.WebhookName, "webhook-name", "istio-galley",
 		"Name of the k8s validatingwebhookconfiguration")
 
+	// MCP client flags
+	// Shall use the same cred options as that of the server. So wrt CACertfile all clients of galley and the
+	// MCP server for which this galley is a client shall share the same Root of Trust
+	rootCmd.PersistentFlags().StringVar(&serverArgs.SourceMCPServerAddrs, "sourceMCPServerAddrs", serverArgs.SourceMCPServerAddrs,
+		" MCP server addresses with "+
+			"mcp:// (insecure) or mcps:// (secure) schema, e.g. mcps://istio-galley.istio-system.svc:9901")
+
 	rootCmd.AddCommand(probeCmd(printf, fatalf))
 	rootCmd.AddCommand(version.CobraCommand())
 	rootCmd.AddCommand(collateral.CobraCommand(rootCmd, &doc.GenManHeader{

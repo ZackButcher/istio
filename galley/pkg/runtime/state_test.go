@@ -228,6 +228,55 @@ func TestState_Apply_Delete(t *testing.T) {
 	}
 }
 
+func TestState_Apply_DeletedTypeURL(t *testing.T) {
+	s := newState(testSchema, cfg)
+
+	e := resource.Event{
+		Kind: resource.Added,
+		Entry: resource.Entry{
+			ID:   resource.VersionedKey{Version: "v1", Key: resource.Key{TypeURL: emptyInfo.TypeURL, FullName: fn}},
+			Item: &types.Any{},
+		},
+	}
+
+	changed := s.apply(e)
+	if !changed {
+		t.Fatal("calling apply should have changed state.")
+	}
+
+	e = resource.Event{
+		Kind: resource.Added,
+		Entry: resource.Entry{
+			ID:   resource.VersionedKey{Version: "v1", Key: resource.Key{TypeURL: emptyInfo.TypeURL, FullName: fn2}},
+			Item: &types.Any{},
+		},
+	}
+
+	changed = s.apply(e)
+	if !changed {
+		t.Fatal("calling apply should have changed state.")
+	}
+
+	e = resource.Event{
+		Kind: resource.DeletedTypeURL,
+		Entry: resource.Entry{
+			ID: resource.VersionedKey{Version: "v2", Key: resource.Key{TypeURL: emptyInfo.TypeURL, FullName: fn}},
+		},
+	}
+	s.apply(e)
+
+	changed = s.apply(e)
+	if !changed {
+		t.Fatal("calling apply should have changed state.")
+	}
+
+	sn := s.buildSnapshot()
+	r := sn.Resources(emptyInfo.TypeURL.String())
+	if len(r) != 0 {
+		t.Fatal("Entry should have not been in snapshot")
+	}
+}
+
 func TestState_Apply_UnknownEventKind(t *testing.T) {
 	s := newState(testSchema, cfg)
 

@@ -15,10 +15,13 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
 	"time"
+
+	"istio.io/istio/pkg/mcp/creds"
 
 	"istio.io/istio/galley/pkg/kube"
 	"istio.io/istio/galley/pkg/kube/converter"
@@ -66,6 +69,11 @@ loop:
 		case 4:
 			p.newMeshConfigCache = func(path string) (meshconfig.Cache, error) { return nil, e }
 		case 5:
+			args.SourceMCPServerAddrs = "mcp"
+			p.mcpSrcNew = func(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (runtime.Source, error) {
+				return nil, e
+			}
+		case 6:
 			args.ConfigPath = "aaa"
 			p.fsNew = func(string, *converter.Config) (runtime.Source, error) { return nil, e }
 		default:
