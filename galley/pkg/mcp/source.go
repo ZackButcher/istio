@@ -192,7 +192,7 @@ func toEntry(o *client.Object) (resource.Entry, error) {
 		ID: resource.VersionedKey{
 			Key: resource.Key{
 				TypeURL:  i.TypeURL,
-				FullName: resource.FullNameFromNamespaceAndName(o.Metadata.Name, ""),
+				FullName: resource.FullNameFromNamespaceAndName("", o.Metadata.Name),
 			},
 			Version:    resource.Version(o.Metadata.Version),
 			CreateTime: t,
