@@ -109,8 +109,8 @@ func newServer(a *Args, p patchTable) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if a.SourceMCPServerAddrs != "" {
-		src, err = p.mcpSrcNew(context.Background(), a.CredentialOptions, a.SourceMCPServerAddrs, "")
+	} else if a.SourceMCPServerAddress != "" {
+		src, err = p.mcpSrcNew(context.Background(), a.MCPClientCredOpts, a.SourceMCPServerAddress, "")
 		if err != nil {
 			return nil, err
 		}

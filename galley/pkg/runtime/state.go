@@ -102,13 +102,6 @@ func (s *State) apply(event resource.Event) bool {
 		delete(pks.versions, event.Entry.ID.FullName)
 		recordStateTypeCount(event.Entry.ID.TypeURL.String(), len(pks.entries))
 
-	case resource.DeletedTypeURL:
-		for key := range pks.entries {
-			delete(pks.entries, key)
-			delete(pks.versions, key)
-		}
-		recordStateTypeCount(event.Entry.ID.TypeURL.String(), len(pks.entries))
-
 	default:
 		scope.Errorf("Unknown event kind: %v", event.Kind)
 		return false

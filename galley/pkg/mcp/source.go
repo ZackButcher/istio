@@ -35,6 +35,14 @@ type source struct {
 	dial    func(ctx context.Context, address string) (mcpapi.AggregatedMeshConfigServiceClient, error)
 	c       chan resource.Event
 	stop    func()
+	lCache map[string]map[string]*Cache
+}
+
+type Cache struct{
+	version string
+	prevVer string
+	ek resource.EventKind
+	entry *resource.Entry
 }
 
 var _ runtime.Source = &source{}
@@ -47,11 +55,8 @@ func New(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (
 		address: mcpAddress,
 		ctx:     ctx,
 		c:       make(chan resource.Event, defaultChanSize),
+		lCache:  make(map[string]map[string]*Cache),
 		dial: func(ctx context.Context, address string) (mcpapi.AggregatedMeshConfigServiceClient, error) {
-
-			// Using the same credentials that Galley uses as a server for the Client Connection as well
-			// This would mean the same root of trust for all the peers of Galley - be it server or client
-			// TODO - May need client specific credentials
 
 			// Copied from pilot/pkg/bootstrap/server.go
 			requiredMCPCertCheckFreq := 500 * time.Millisecond
@@ -62,27 +67,32 @@ func New(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (
 
 			securityOption := grpc.WithInsecure()
 			if u.Scheme == "mcps" {
-				requiredFiles := []string{
-					copts.CertificateFile,
-					copts.KeyFile,
-					copts.CACertificateFile,
-				}
-				scope.Infof("Secure MCP Client configured. Waiting for required certificate files to become available: %v",
-					requiredFiles)
-				for len(requiredFiles) > 0 {
-					if _, err := os.Stat(requiredFiles[0]); os.IsNotExist(err) {
-						log.Infof("%v not found. Checking again in %v", requiredFiles[0], requiredMCPCertCheckFreq)
-						select {
-						case <-ctx.Done():
-							return nil, nil
-						case <-time.After(requiredMCPCertCheckFreq):
-							// retry
-						}
-						continue
+				// TODO - Check for presence of cert files - this code could be extracted into function
+				// and shared with pilot/pkg/bootstrap/server.go- initMCPConfigController
+				// https://github.com/istio/istio/blob/master/pilot/pkg/bootstrap/server.go#L574-L591
+
+					requiredFiles := []string{
+						copts.CertificateFile,
+						copts.KeyFile,
+						copts.CACertificateFile,
 					}
-					log.Infof("%v found", requiredFiles[0])
-					requiredFiles = requiredFiles[1:]
-				}
+					scope.Infof("Secure MCP Client configured. Waiting for required certificate files to become available: %v",
+						requiredFiles)
+					for len(requiredFiles) > 0 {
+						if _, err := os.Stat(requiredFiles[0]); os.IsNotExist(err) {
+							log.Infof("%v not found. Checking again in %v", requiredFiles[0], requiredMCPCertCheckFreq)
+							select {
+							case <-ctx.Done():
+								return nil, nil
+							case <-time.After(requiredMCPCertCheckFreq):
+								// retry
+							}
+							continue
+						}
+						log.Infof("%v found", requiredFiles[0])
+						requiredFiles = requiredFiles[1:]
+					}
+				//
 
 				watcher, err := creds.WatchFiles(ctx.Done(), copts)
 				if err != nil {
@@ -124,13 +134,22 @@ func (s *source) Stop() {
 }
 
 func (s *source) Apply(c *client.Change) error {
-	i, found := metadata.Types.Lookup(c.TypeURL)
+	_, found := metadata.Types.Lookup(c.TypeURL)
 	if !found {
 		return fmt.Errorf("invalid type: %v", c.TypeURL)
 	}
 	scope.Debugf("received object %+v and length %d", c, len(c.Objects))
+
+	// By default mark all the elements of local cache deleted, if present
+	if _, ok := s.lCache[c.TypeURL]; !ok {
+		s.lCache[c.TypeURL] = make(map[string]*Cache)
+	} else {
+		for _, c := range s.lCache[c.TypeURL] {
+			c.ek = resource.Deleted
+		}
+	}
+
 	var errs error
-	ea := make([]resource.Event, 0)
 	for _, o := range c.Objects {
 		if o.TypeURL != c.TypeURL {
 			errs = multierror.Append(errs,
@@ -145,32 +164,61 @@ func (s *source) Apply(c *client.Change) error {
 		// If there is an error, ignore the entire batch.
 		// but keep appending errs[] for the batch
 		if errs == nil {
-			ea = append(ea, resource.Event{
-				Kind:  resource.Added,
-				Entry: e})
+			lc, ok := s.lCache[o.TypeURL][o.Metadata.Name]
+			if ok {
+				if lc.version == o.Metadata.Version {
+					lc.ek = resource.None
+				}else {
+					lc.prevVer = lc.version
+					lc.version = o.Metadata.Version
+					lc.ek = resource.Updated
+				}
+				lc.entry = &e
+
+			} else {
+				s.lCache[o.TypeURL][o.Metadata.Name] = &Cache {
+					version: o.Metadata.Version,
+					ek: resource.Added,
+					entry: &e,
+				}
+			}
 		}
 	}
 
-	// At this point we have all resources for that TypeURL
-	if errs == nil {
-		// Is it worth having another cache to find the delta? Instead
-		// remove existing state entries and recreate for the TypeURL
-		s.c <- resource.Event{
-			Kind: resource.DeletedTypeURL,
-			Entry: resource.Entry{
-				ID: resource.VersionedKey{
-					Key: resource.Key{
-						TypeURL: i.TypeURL,
-					},
-				},
-			},
+	// If there is an error, the entire batch will be ignored
+	// Hence remove any new adds from the local cache
+	// And restore prev version if there were updates
+	if errs != nil {
+		for key, lc := range s.lCache[c.TypeURL]{
+			if lc.ek == resource.Added {
+				delete(s.lCache[c.TypeURL], key) //this is safe
+			} else if lc.ek == resource.Updated {
+				lc.version = lc.prevVer // We are not worried about the entry as it will be overwritten
+			}
 		}
-		// If there are no objects for the TypeURL, mcp server would send
-		// an empty object slice. So ea would be empty
-		for _, e := range ea {
-			s.c <- e
+	} else {
+		// At this point we have all resources for that TypeURL
+		//loop through the local cache and generate the appropriate events
+		es := false
+		for key, lc := range s.lCache[c.TypeURL] {
+			if lc.ek == resource.None {
+				continue
+			}
+			es = true
+			scope.Debugf("pushed an event %+v", lc.ek)
+			s.c <- resource.Event{
+				Kind: lc.ek,
+				Entry: *lc.entry,
+			}
+			// If its a Deleted event, remove it from local cache
+			if lc.ek == resource.Deleted {
+				delete(s.lCache[c.TypeURL], key)
+			}
 		}
-		s.c <- resource.Event{Kind: resource.FullSync}
+		if es {
+			// Do a FullSynch after all events for a publish
+			s.c <- resource.Event{Kind: resource.FullSync}
+		}
 	}
 
 	return errs

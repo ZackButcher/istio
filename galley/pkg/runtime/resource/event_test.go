@@ -26,7 +26,6 @@ func TestEventKind_String(t *testing.T) {
 		Updated:        "Updated",
 		Deleted:        "Deleted",
 		FullSync:       "FullSync",
-		DeletedTypeURL: "DeletedTypeURL",
 		55:             "<<Unknown EventKind 55>>",
 	}
 
@@ -60,10 +59,6 @@ func TestEvent_String(t *testing.T) {
 		{
 			i:   Event{Kind: Deleted, Entry: Entry{ID: VersionedKey{Version: "foo", Key: Key{FullName: FullName{"fn"}}}}},
 			exp: "[Event](Deleted: [VKey](:fn @foo))",
-		},
-		{
-			i:   Event{Kind: DeletedTypeURL, Entry: Entry{ID: VersionedKey{Version: "foo", Key: Key{TypeURL: TypeURL{"turl"}}}}},
-			exp: "[Event](DeletedTypeURL: turl)",
 		},
 		{
 			i:   Event{Kind: FullSync},

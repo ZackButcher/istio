@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"istio.io/istio/pkg/mcp/creds"
-
 	"istio.io/istio/galley/pkg/kube"
 	"istio.io/istio/galley/pkg/kube/converter"
 	"istio.io/istio/galley/pkg/meshconfig"
@@ -69,7 +68,7 @@ loop:
 		case 4:
 			p.newMeshConfigCache = func(path string) (meshconfig.Cache, error) { return nil, e }
 		case 5:
-			args.SourceMCPServerAddrs = "mcp"
+			args.SourceMCPServerAddress = "mcp"
 			p.mcpSrcNew = func(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (runtime.Source, error) {
 				return nil, e
 			}
