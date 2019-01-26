@@ -74,12 +74,12 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 
 			// Default MCPClient credentials to MCP Server if not supplied
 			if serverArgs.MCPClientCredOpts.CertificateFile == "" {
-				serverArgs.MCPClientCredOpts.CertificateFile =  validationArgs.CertFile
+				serverArgs.MCPClientCredOpts.CertificateFile = validationArgs.CertFile
 			}
 			if serverArgs.MCPClientCredOpts.KeyFile == "" {
 				serverArgs.MCPClientCredOpts.KeyFile = validationArgs.KeyFile
 			}
-			if serverArgs.MCPClientCredOpts.CACertificateFile == ""{
+			if serverArgs.MCPClientCredOpts.CACertificateFile == "" {
 				serverArgs.MCPClientCredOpts.CACertificateFile = validationArgs.CACertFile
 			}
 
@@ -177,7 +177,7 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 		"Name of the k8s validatingwebhookconfiguration")
 
 	// MCP client flags
-	rootCmd.PersistentFlags().StringVar(&serverArgs.SourceMCPServerAddress, "sourceMCPServerAddress", "", " MCP server addresses with " + "mcp:// (insecure) or mcps:// (secure) schema, e.g. mcps://istio-galley.istio-system.svc:9901")
+	rootCmd.PersistentFlags().StringVar(&serverArgs.SourceMCPServerAddress, "sourceMCPServerAddress", "", " MCP server addresses with "+"mcp:// (insecure) or mcps:// (secure) schema, e.g. mcps://istio-galley.istio-system.svc:9901")
 	// MCP Client defaults to MCP server certs to connect to MCP Source server
 	rootCmd.PersistentFlags().StringVar(&serverArgs.MCPClientCredOpts.CertificateFile, "mcpClientTLSCertFile", "",
 		"File containing the x509 Certificate for mTLS to connect to source MCP Server")
@@ -185,7 +185,6 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 		"File containing the x509 private key matching --mcpClientTLSCertFile")
 	rootCmd.PersistentFlags().StringVar(&serverArgs.MCPClientCredOpts.CACertificateFile, "mcpClientCACertFile", "",
 		"File containing the caBundle that signed the cert/key specified by --mcpClientTLSCertFile and --mcpClientTLSKeyFile.")
-
 
 	rootCmd.AddCommand(probeCmd(printf, fatalf))
 	rootCmd.AddCommand(version.CobraCommand())

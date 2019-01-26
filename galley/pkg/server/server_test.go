@@ -21,13 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/istio/pkg/mcp/creds"
 	"istio.io/istio/galley/pkg/kube"
 	"istio.io/istio/galley/pkg/kube/converter"
 	"istio.io/istio/galley/pkg/meshconfig"
 	"istio.io/istio/galley/pkg/runtime"
 	"istio.io/istio/galley/pkg/testing/mock"
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/mcp/creds"
 	"istio.io/istio/pkg/mcp/server"
 	"istio.io/istio/pkg/mcp/testing/monitoring"
 )

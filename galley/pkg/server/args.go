@@ -77,7 +77,7 @@ type Args struct {
 	SourceMCPServerAddress string
 
 	// MCPClientCredOpts is the credentials galley will use to connect to source mcpserver
-	MCPClientCredOpts	*creds.Options
+	MCPClientCredOpts *creds.Options
 
 	// MeshConfigFile is the path for mesh config
 	MeshConfigFile string
@@ -106,7 +106,6 @@ func DefaultArgs() *Args {
 		CredentialOptions:         creds.DefaultOptions(),
 		ConfigPath:                "",
 		SourceMCPServerAddress:    "",
-		// MCP Client cred opts defaults to MCP Server cred opts
 		MCPClientCredOpts:         creds.DefaultOptions(),
 		DomainSuffix:              defaultDomainSuffix,
 		DisableResourceReadyCheck: false,

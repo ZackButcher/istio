@@ -21,12 +21,12 @@ import (
 
 func TestEventKind_String(t *testing.T) {
 	tests := map[EventKind]string{
-		None:           "None",
-		Added:          "Added",
-		Updated:        "Updated",
-		Deleted:        "Deleted",
-		FullSync:       "FullSync",
-		55:             "<<Unknown EventKind 55>>",
+		None:     "None",
+		Added:    "Added",
+		Updated:  "Updated",
+		Deleted:  "Deleted",
+		FullSync: "FullSync",
+		55:       "<<Unknown EventKind 55>>",
 	}
 
 	for i, e := range tests {

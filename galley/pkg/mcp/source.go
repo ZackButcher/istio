@@ -35,14 +35,14 @@ type source struct {
 	dial    func(ctx context.Context, address string) (mcpapi.AggregatedMeshConfigServiceClient, error)
 	c       chan resource.Event
 	stop    func()
-	lCache map[string]map[string]*Cache
+	lCache  map[string]map[string]*Cache
 }
 
-type Cache struct{
+type Cache struct {
 	version string
 	prevVer string
-	ek resource.EventKind
-	entry *resource.Entry
+	ek      resource.EventKind
+	entry   *resource.Entry
 }
 
 var _ runtime.Source = &source{}
@@ -71,27 +71,27 @@ func New(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (
 				// and shared with pilot/pkg/bootstrap/server.go- initMCPConfigController
 				// https://github.com/istio/istio/blob/master/pilot/pkg/bootstrap/server.go#L574-L591
 
-					requiredFiles := []string{
-						copts.CertificateFile,
-						copts.KeyFile,
-						copts.CACertificateFile,
-					}
-					scope.Infof("Secure MCP Client configured. Waiting for required certificate files to become available: %v",
-						requiredFiles)
-					for len(requiredFiles) > 0 {
-						if _, err := os.Stat(requiredFiles[0]); os.IsNotExist(err) {
-							log.Infof("%v not found. Checking again in %v", requiredFiles[0], requiredMCPCertCheckFreq)
-							select {
-							case <-ctx.Done():
-								return nil, nil
-							case <-time.After(requiredMCPCertCheckFreq):
-								// retry
-							}
-							continue
+				requiredFiles := []string{
+					copts.CertificateFile,
+					copts.KeyFile,
+					copts.CACertificateFile,
+				}
+				scope.Infof("Secure MCP Client configured. Waiting for required certificate files to become available: %v",
+					requiredFiles)
+				for len(requiredFiles) > 0 {
+					if _, err := os.Stat(requiredFiles[0]); os.IsNotExist(err) {
+						log.Infof("%v not found. Checking again in %v", requiredFiles[0], requiredMCPCertCheckFreq)
+						select {
+						case <-ctx.Done():
+							return nil, nil
+						case <-time.After(requiredMCPCertCheckFreq):
+							// retry
 						}
-						log.Infof("%v found", requiredFiles[0])
-						requiredFiles = requiredFiles[1:]
+						continue
 					}
+					log.Infof("%v found", requiredFiles[0])
+					requiredFiles = requiredFiles[1:]
+				}
 				//
 
 				watcher, err := creds.WatchFiles(ctx.Done(), copts)
@@ -168,7 +168,7 @@ func (s *source) Apply(c *client.Change) error {
 			if ok {
 				if lc.version == o.Metadata.Version {
 					lc.ek = resource.None
-				}else {
+				} else {
 					lc.prevVer = lc.version
 					lc.version = o.Metadata.Version
 					lc.ek = resource.Updated
@@ -176,10 +176,10 @@ func (s *source) Apply(c *client.Change) error {
 				lc.entry = &e
 
 			} else {
-				s.lCache[o.TypeURL][o.Metadata.Name] = &Cache {
+				s.lCache[o.TypeURL][o.Metadata.Name] = &Cache{
 					version: o.Metadata.Version,
-					ek: resource.Added,
-					entry: &e,
+					ek:      resource.Added,
+					entry:   &e,
 				}
 			}
 		}
@@ -189,7 +189,7 @@ func (s *source) Apply(c *client.Change) error {
 	// Hence remove any new adds from the local cache
 	// And restore prev version if there were updates
 	if errs != nil {
-		for key, lc := range s.lCache[c.TypeURL]{
+		for key, lc := range s.lCache[c.TypeURL] {
 			if lc.ek == resource.Added {
 				delete(s.lCache[c.TypeURL], key) //this is safe
 			} else if lc.ek == resource.Updated {
@@ -207,7 +207,7 @@ func (s *source) Apply(c *client.Change) error {
 			es = true
 			scope.Debugf("pushed an event %+v", lc.ek)
 			s.c <- resource.Event{
-				Kind: lc.ek,
+				Kind:  lc.ek,
 				Entry: *lc.entry,
 			}
 			// If its a Deleted event, remove it from local cache

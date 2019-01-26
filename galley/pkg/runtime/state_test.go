@@ -228,7 +228,6 @@ func TestState_Apply_Delete(t *testing.T) {
 	}
 }
 
-
 func TestState_Apply_UnknownEventKind(t *testing.T) {
 	s := newState(testSchema, cfg)
 

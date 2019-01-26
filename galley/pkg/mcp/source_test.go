@@ -20,9 +20,9 @@ import (
 )
 
 type testData struct {
-	info  resource.Info
-	entry proto.Message
-	name  string
+	info    resource.Info
+	entry   proto.Message
+	name    string
 	version string
 }
 
@@ -41,16 +41,16 @@ func allConfigsSnapshot(infos []testData, version string) snapshot.Snapshot {
 func Test(t *testing.T) {
 	data := []testData{
 		{
-			info: metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.VirtualService"),
-			name: "test.vservice1",
+			info:    metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.VirtualService"),
+			name:    "test.vservice1",
 			version: "1",
 			entry: &v1alpha3.VirtualService{
 				Hosts: []string{"localhost"},
 			},
 		},
 		{
-			info: metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.VirtualService"),
-			name: "test.vservice2",
+			info:    metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.VirtualService"),
+			name:    "test.vservice2",
 			version: "1",
 			entry: &v1alpha3.VirtualService{
 				Hosts:       []string{"somehost"},
@@ -62,8 +62,8 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			info: metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.Gateway"),
-			name: "test.gw1",
+			info:    metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.Gateway"),
+			name:    "test.gw1",
 			version: "1",
 			entry: &v1alpha3.Gateway{
 				Servers:  nil,
@@ -109,13 +109,13 @@ func Test(t *testing.T) {
 	//Test AddAndUpdate
 	// We should see one Update and one Add event in the channel
 	data[1].version = "2"
-	a := testData {
-	info: metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.Gateway"),
-		name: "test.gw2",
+	a := testData{
+		info:    metadata.Types.Get("type.googleapis.com/istio.networking.v1alpha3.Gateway"),
+		name:    "test.gw2",
 		version: "1",
 		entry: &v1alpha3.Gateway{
-		Servers:  nil,
-		Selector: map[string]string{"istio": "ingressgateway"},
+			Servers:  nil,
+			Selector: map[string]string{"istio": "ingressgateway"},
 		},
 	}
 	data = append(data, a)
@@ -128,12 +128,10 @@ func Test(t *testing.T) {
 	server.Cache.SetSnapshot(snapshot.DefaultGroup, allConfigsSnapshot(data, "4"))
 	testDelete(t, events)
 
-
 	//Test NoUpdate
 	// We should not see any events in the channel
 	server.Cache.SetSnapshot(snapshot.DefaultGroup, allConfigsSnapshot(data, "5"))
 	testNoChange(t, events)
-
 
 }
 
@@ -141,7 +139,7 @@ func schemeURL(u *url.URL) string {
 	return fmt.Sprintf("mcp://%s:%s", u.Hostname(), u.Port())
 }
 
-func testAdd(t *testing.T, events chan resource.Event){
+func testAdd(t *testing.T, events chan resource.Event) {
 	results := make(chan resource.Event)
 	vs := 0
 	gw := 0
@@ -187,7 +185,7 @@ func testAdd(t *testing.T, events chan resource.Event){
 
 }
 
-func testUpdate(t *testing.T, events chan resource.Event){
+func testUpdate(t *testing.T, events chan resource.Event) {
 	results := make(chan resource.Event)
 	vs := 0
 	tot := 0
@@ -229,7 +227,7 @@ func testUpdate(t *testing.T, events chan resource.Event){
 
 }
 
-func testAddAndUpdate(t *testing.T, events chan resource.Event){
+func testAddAndUpdate(t *testing.T, events chan resource.Event) {
 	results := make(chan resource.Event)
 	vs := 0
 	gw := 0
@@ -247,7 +245,7 @@ func testAddAndUpdate(t *testing.T, events chan resource.Event){
 					gw++
 					tot++
 				} else {
-						t.Fatalf("Unexpected event received")
+					t.Fatalf("Unexpected event received")
 				}
 			case resource.Updated:
 				if e.Entry.ID.TypeURL.String() == "type.googleapis.com/istio.networking.v1alpha3.VirtualService" {
@@ -281,7 +279,7 @@ func testAddAndUpdate(t *testing.T, events chan resource.Event){
 
 }
 
-func testDelete(t *testing.T, events chan resource.Event){
+func testDelete(t *testing.T, events chan resource.Event) {
 	results := make(chan resource.Event)
 	vs := 0
 	gw := 0
@@ -300,7 +298,7 @@ func testDelete(t *testing.T, events chan resource.Event){
 				} else if e.Entry.ID.TypeURL.String() == "type.googleapis.com/istio.networking.v1alpha3.Gateway" {
 					gw++
 				} else {
-						t.Fatalf("Unexpected event received")
+					t.Fatalf("Unexpected event received")
 				}
 				tot++
 			case resource.FullSync:
@@ -328,8 +326,7 @@ func testDelete(t *testing.T, events chan resource.Event){
 
 }
 
-
-func testNoChange(t *testing.T, events chan resource.Event){
+func testNoChange(t *testing.T, events chan resource.Event) {
 	go func() {
 		for {
 			e := <-events
@@ -345,5 +342,3 @@ func testNoChange(t *testing.T, events chan resource.Event){
 	<-wait
 	fmt.Println("event testNoChange pass")
 }
-
-
