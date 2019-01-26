@@ -35,10 +35,10 @@ type source struct {
 	dial    func(ctx context.Context, address string) (mcpapi.AggregatedMeshConfigServiceClient, error)
 	c       chan resource.Event
 	stop    func()
-	lCache  map[string]map[string]*Cache
+	lCache  map[string]map[string]*cache
 }
 
-type Cache struct {
+type cache struct {
 	version string
 	prevVer string
 	ek      resource.EventKind
@@ -55,7 +55,7 @@ func New(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (
 		address: mcpAddress,
 		ctx:     ctx,
 		c:       make(chan resource.Event, defaultChanSize),
-		lCache:  make(map[string]map[string]*Cache),
+		lCache:  make(map[string]map[string]*cache),
 		dial: func(ctx context.Context, address string) (mcpapi.AggregatedMeshConfigServiceClient, error) {
 
 			// Copied from pilot/pkg/bootstrap/server.go
@@ -142,7 +142,7 @@ func (s *source) Apply(c *client.Change) error {
 
 	// By default mark all the elements of local cache deleted, if present
 	if _, ok := s.lCache[c.TypeURL]; !ok {
-		s.lCache[c.TypeURL] = make(map[string]*Cache)
+		s.lCache[c.TypeURL] = make(map[string]*cache)
 	} else {
 		for _, c := range s.lCache[c.TypeURL] {
 			c.ek = resource.Deleted
@@ -176,7 +176,7 @@ func (s *source) Apply(c *client.Change) error {
 				lc.entry = &e
 
 			} else {
-				s.lCache[o.TypeURL][o.Metadata.Name] = &Cache{
+				s.lCache[o.TypeURL][o.Metadata.Name] = &cache{
 					version: o.Metadata.Version,
 					ek:      resource.Added,
 					entry:   &e,
