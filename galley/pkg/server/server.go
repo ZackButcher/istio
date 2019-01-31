@@ -15,6 +15,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"istio.io/istio/galley/pkg/kube"
 	"istio.io/istio/galley/pkg/kube/converter"
 	"istio.io/istio/galley/pkg/kube/source"
+	mcps "istio.io/istio/galley/pkg/mcp"
 	"istio.io/istio/galley/pkg/meshconfig"
 	"istio.io/istio/galley/pkg/metadata"
 	"istio.io/istio/galley/pkg/runtime"
@@ -64,6 +66,7 @@ type patchTable struct {
 	newMeshConfigCache          func(path string) (meshconfig.Cache, error)
 	mcpMetricReporter           func(string) server.Reporter
 	fsNew                       func(string, *converter.Config) (runtime.Source, error)
+	mcpSrcNew                   func(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (runtime.Source, error)
 }
 
 func defaultPatchTable() patchTable {
@@ -76,6 +79,7 @@ func defaultPatchTable() patchTable {
 		mcpMetricReporter:           func(prefix string) server.Reporter { return server.NewStatsContext(prefix) },
 		newMeshConfigCache:          func(path string) (meshconfig.Cache, error) { return meshconfig.NewCacheFromFile(path) },
 		fsNew:                       fs.New,
+		mcpSrcNew:                   mcps.New,
 	}
 }
 
@@ -98,8 +102,15 @@ func newServer(a *Args, p patchTable) (*Server, error) {
 	converterCfg := &converter.Config{Mesh: mesh}
 
 	var src runtime.Source
+
+	// Config Source is exclusive
 	if a.ConfigPath != "" {
 		src, err = p.fsNew(a.ConfigPath, converterCfg)
+		if err != nil {
+			return nil, err
+		}
+	} else if a.SourceMCPServerAddress != "" {
+		src, err = p.mcpSrcNew(context.Background(), a.MCPClientCredOpts, a.SourceMCPServerAddress, "")
 		if err != nil {
 			return nil, err
 		}

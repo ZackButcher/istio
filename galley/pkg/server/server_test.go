@@ -15,6 +15,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
@@ -26,6 +27,7 @@ import (
 	"istio.io/istio/galley/pkg/runtime"
 	"istio.io/istio/galley/pkg/testing/mock"
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/mcp/creds"
 	"istio.io/istio/pkg/mcp/server"
 	"istio.io/istio/pkg/mcp/testing/monitoring"
 )
@@ -66,6 +68,11 @@ loop:
 		case 4:
 			p.newMeshConfigCache = func(path string) (meshconfig.Cache, error) { return nil, e }
 		case 5:
+			args.SourceMCPServerAddress = "mcp"
+			p.mcpSrcNew = func(ctx context.Context, copts *creds.Options, mcpAddress, nodeID string) (runtime.Source, error) {
+				return nil, e
+			}
+		case 6:
 			args.ConfigPath = "aaa"
 			p.fsNew = func(string, *converter.Config) (runtime.Source, error) { return nil, e }
 		default:
