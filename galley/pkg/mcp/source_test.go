@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/istio/pkg/mcp/creds"
-
-	"istio.io/api/networking/v1alpha3"
-
 	"github.com/gogo/protobuf/proto"
 
+	"istio.io/api/networking/v1alpha3"
 	"istio.io/istio/galley/pkg/metadata"
 	"istio.io/istio/galley/pkg/runtime/resource"
+	"istio.io/istio/pkg/mcp/client"
+	"istio.io/istio/pkg/mcp/creds"
 	"istio.io/istio/pkg/mcp/snapshot"
 	"istio.io/istio/pkg/mcp/testing"
+	mcp "istio.io/api/mcp/v1alpha1"
 )
 
 type testData struct {
@@ -27,7 +27,8 @@ type testData struct {
 }
 
 func allConfigsSnapshot(infos []testData, version string) snapshot.Snapshot {
-	createTime := time.Now()
+	//createTime := time.Now()
+	var createTime time.Time
 	b := snapshot.NewInMemoryBuilder()
 	// snapshot is supposed to be immutable. This is for testing
 	for _, i := range infos {
@@ -93,6 +94,8 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start test server with: %v", err)
 	}
+	_ = events
+
 
 	// Test Add
 	// We should receive 2 Add events and a FullSync for Virtual Service
@@ -133,6 +136,113 @@ func Test(t *testing.T) {
 	server.Cache.SetSnapshot(snapshot.DefaultGroup, allConfigsSnapshot(data, "5"))
 	testNoChange(t, events)
 
+	// Mismatch in TypeURL
+	testTypeURLMismatch(t, data)
+
+	underTest.Stop()
+}
+
+func testTypeURLMismatch(t *testing.T, data []testData){
+	// Mismatch in TypeURL
+	src := &source {
+		lCache: make(map[string]map[string]*cache),
+		c:       make(chan resource.Event, defaultChanSize),
+	}
+
+	// Create object in local cache
+	// There should be an event for Added and Fullsync
+	c := &client.Change{
+		TypeURL : data[0].info.TypeURL.String(),
+		Objects: []*client.Object{
+			{	TypeURL: data[0].info.TypeURL.String(),
+				Metadata: &mcp.Metadata{Name: data[0].name, Version: data[0].version},
+				Resource: data[0].entry,
+			},
+		},
+
+	}
+	if err := src.Apply(c); err != nil {
+		t.Fatalf("Apply returned error when not expected %v:", err)
+	}
+	results := make(chan resource.Event)
+	tot := 0
+	go func() {
+		for {
+			if tot == 2 {
+				break
+			}
+			e := <- src.c
+			switch e.Kind {
+			case resource.Added:
+				tot++
+			case resource.FullSync:
+				tot++
+			default:
+				t.Fatalf("Unexpected event received")
+			}
+		}
+		results <- resource.Event{}
+	}()
+	wait := time.NewTimer(1 * time.Minute).C
+	select {
+	case <-wait:
+		t.Fatalf("timed out waiting for all events")
+	case r := <-results:
+		if tot != 2 {
+			t.Fatalf("too few results: %v", r)
+		}
+	}
+
+
+	// Send an update to the object and another object with invalid typeurl
+	c = &client.Change{
+		TypeURL : data[0].info.TypeURL.String(),
+		Objects: []*client.Object{
+			{	TypeURL: data[0].info.TypeURL.String(),
+				Metadata: &mcp.Metadata{Name: data[0].name, Version: "9"},
+				Resource: data[0].entry,
+			},
+			{	TypeURL: "InvalidTypeURL",
+				Metadata: &mcp.Metadata{Name: "testresource", Version: data[0].version},
+				Resource: data[0].entry,
+			},
+		},
+
+	}
+	if err := src.Apply(c); err == nil {
+		t.Fatalf("Apply expected to return error but returned nil")
+	}
+
+	// Send a new object and another object with invalid typeURL
+	c = &client.Change{
+		TypeURL : data[0].info.TypeURL.String(),
+		Objects: []*client.Object{
+			{	TypeURL: data[0].info.TypeURL.String(),
+				Metadata: &mcp.Metadata{Name: "testresource", Version: data[0].version},
+				Resource: data[0].entry,
+			},
+			{	TypeURL: "InvalidTypeURL",
+				Metadata: &mcp.Metadata{Name: "some", Version: data[0].version},
+				Resource: data[0].entry,
+			},
+		},
+
+	}
+	if err := src.Apply(c); err == nil {
+		t.Fatalf("Apply expected to return error but returned nil")
+	}
+
+	// Invalid TypeURL at the response level
+	// We should not see any events in the channel
+	c = &client.Change{TypeURL : "test",
+		Objects: []*client.Object{ {TypeURL: "something"},
+		},
+	}
+	if err := src.Apply(c); err == nil {
+		t.Fatalf("Apply expected to return error but returned nil")
+	}
+	// All the Apply call above shouldn't have resulted in any event
+	testNoChange(t, src.c)
 }
 
 func schemeURL(u *url.URL) string {
@@ -338,7 +448,7 @@ func testNoChange(t *testing.T, events chan resource.Event) {
 		}
 	}()
 
-	wait := time.NewTimer(1 * time.Minute).C
+	wait := time.NewTimer(30 * time.Second).C
 	<-wait
 	fmt.Println("event testNoChange pass")
 }

@@ -191,37 +191,39 @@ func (s *source) Apply(c *client.Change) error {
 	if errs != nil {
 		for key, lc := range s.lCache[c.TypeURL] {
 			if lc.ek == resource.Added {
-				delete(s.lCache[c.TypeURL], key) //this is safe
+				// this is safe because anything with state `Added` was new in this batch
+				delete(s.lCache[c.TypeURL], key)
 			} else if lc.ek == resource.Updated {
 				lc.version = lc.prevVer // We are not worried about the entry as it will be overwritten
 			}
 		}
-	} else {
-		// At this point we have all resources for that TypeURL
-		//loop through the local cache and generate the appropriate events
-		es := false
-		for key, lc := range s.lCache[c.TypeURL] {
-			if lc.ek == resource.None {
-				continue
-			}
-			es = true
-			scope.Debugf("pushed an event %+v", lc.ek)
-			s.c <- resource.Event{
-				Kind:  lc.ek,
-				Entry: *lc.entry,
-			}
-			// If its a Deleted event, remove it from local cache
-			if lc.ek == resource.Deleted {
-				delete(s.lCache[c.TypeURL], key)
-			}
-		}
-		if es {
-			// Do a FullSynch after all events for a publish
-			s.c <- resource.Event{Kind: resource.FullSync}
-		}
+		return errs
 	}
 
-	return errs
+	// At this point we have all resources for that TypeURL
+	//loop through the local cache and generate the appropriate events
+	fsync := false
+	for key, lc := range s.lCache[c.TypeURL] {
+		if lc.ek == resource.None {
+			continue
+		}
+		fsync = true
+		scope.Debugf("pushed an event %+v", lc.ek)
+		s.c <- resource.Event{
+			Kind:  lc.ek,
+			Entry: *lc.entry,
+		}
+		// If its a Deleted event, remove it from local cache
+		if lc.ek == resource.Deleted {
+			delete(s.lCache[c.TypeURL], key)
+		}
+	}
+	if fsync {
+		// Do a FullSynch after all events for a publish
+		s.c <- resource.Event{Kind: resource.FullSync}
+	}
+
+	return nil
 }
 
 // toEntry converts the object into a resource.Entry.
