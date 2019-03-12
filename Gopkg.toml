@@ -291,7 +291,8 @@ ignored = [
 
 [[constraint]]
   name = "istio.io/api"
-  branch = "release-1.1"
+  branch = "ingress-inbound-telemetry"
+  source = "https://github.com/ZackButcher/api.git"
 
 # fortio is latest tagged by default
 

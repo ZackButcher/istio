@@ -139,9 +139,16 @@ func (configgen *ConfigGeneratorImpl) buildGatewayListeners(env *model.Environme
 				Protocol: protocol,
 			},
 		}
-		for _, p := range configgen.Plugins {
+		for name, p := range configgen.Plugins {
 			if err := p.OnOutboundListener(pluginParams, mutable); err != nil {
 				log.Warna("buildGatewayListeners: failed to build listener for gateway: ", err.Error())
+			}
+
+			// Wire up Mixer Reports on inbound listeners if the option is set in mesh config.
+			if env.Mesh.EnableGatewayServerMixer && name == plugin.Mixer {
+				if err := p.OnInboundListener(pluginParams, mutable); err != nil {
+					log.Warna("buildGatewayListeners: failed to build listener for gateway: ", err.Error())
+				}
 			}
 		}
 

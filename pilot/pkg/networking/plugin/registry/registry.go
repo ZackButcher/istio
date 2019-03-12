@@ -33,12 +33,12 @@ var availablePlugins = map[string]plugin.Plugin{
 }
 
 // NewPlugins returns a slice of default Plugins.
-func NewPlugins(in []string) []plugin.Plugin {
-	var plugins []plugin.Plugin
+func NewPlugins(in []string) map[string]plugin.Plugin {
+	out := make(map[string]plugin.Plugin)
 	for _, pl := range in {
 		if p, exist := availablePlugins[pl]; exist {
-			plugins = append(plugins, p)
+			out[pl] = p
 		}
 	}
-	return plugins
+	return out
 }
